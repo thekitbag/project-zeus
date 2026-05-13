@@ -1,0 +1,13 @@
+services:
+  zeus:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - zeus-data:/data
+    restart: unless-stopped
+    environment:
+      - DB_PATH=/data/zeus.db
+
+volumes:
+  zeus-data:
