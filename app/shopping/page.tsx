@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import Image from "next/image";
 import type { ShoppingList } from "@/db/schema";
 
 export default function ShoppingPage() {
@@ -40,9 +41,20 @@ export default function ShoppingPage() {
   return (
     <div className="flex flex-col min-h-full">
       <header className="px-4 pt-8 pb-4">
-        <p className="text-xs font-semibold tracking-widest uppercase text-amber-600 mb-1">
-          Project Zeus
-        </p>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-semibold tracking-widest uppercase text-amber-600">
+            Project Zeus
+          </p>
+          <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-amber-200 shadow-sm flex-shrink-0">
+            <Image
+              src="/johnson.jpeg"
+              alt="Johnson — overseeing operations"
+              fill
+              className="object-cover object-top"
+              sizes="40px"
+            />
+          </div>
+        </div>
         <h1 className="text-2xl font-bold text-stone-900 tracking-tight">
           Shopping
         </h1>
