@@ -3,6 +3,7 @@
 import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import Image from "next/image";
 import type { ShoppingItem, ShoppingList } from "@/db/schema";
 import { ShoppingItem as ShoppingItemComponent } from "@/components/ShoppingItem";
 import { AddItemForm } from "@/components/AddItemForm";
@@ -40,7 +41,7 @@ export default function ListPage({ params }: { params: Promise<{ id: string }> }
         </h1>
         <p className="text-xs text-stone-400 mt-0.5">
           {activeItems.length === 0 && !isLoading
-            ? "Nothing left to get. A minor triumph."
+            ? "God, life's relentless."
             : `${activeItems.length} item${activeItems.length !== 1 ? "s" : ""} remaining`}
         </p>
       </header>
@@ -51,9 +52,18 @@ export default function ListPage({ params }: { params: Promise<{ id: string }> }
             Retrieving items from the archive…
           </div>
         ) : activeItems.length === 0 && completedItems.length === 0 ? (
-          <div className="py-12 text-center px-6">
-            <p className="text-stone-400 text-sm leading-relaxed">
-              This shopping list has become a real snake. Add something to get started.
+          <div className="py-10 text-center px-6">
+            <div className="relative w-48 h-36 mx-auto rounded-xl overflow-hidden mb-4 shadow-sm">
+              <Image
+                src="/noturkey.jpeg"
+                alt="Where's the turkey Jeremy?"
+                fill
+                className="object-cover object-top"
+                sizes="192px"
+              />
+            </div>
+            <p className="text-stone-500 text-sm font-medium">
+              Where&apos;s the turkey, Jeremy?
             </p>
           </div>
         ) : (

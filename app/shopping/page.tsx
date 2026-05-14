@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import Image from "next/image";
 import type { ShoppingList } from "@/db/schema";
+import { ListCard } from "@/components/ListCard";
 
 export default function ShoppingPage() {
   const qc = useQueryClient();
@@ -41,7 +41,7 @@ export default function ShoppingPage() {
   return (
     <div className="flex flex-col min-h-full">
       <header className="px-4 pt-8 pb-4">
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-semibold tracking-widest uppercase text-amber-600">
             Project Zeus
           </p>
@@ -55,11 +55,21 @@ export default function ShoppingPage() {
             />
           </div>
         </div>
+        <div className="relative w-full h-36 rounded-2xl overflow-hidden mb-3 shadow-sm">
+          <Image
+            src="/jezshopping.jpeg"
+            alt="Jez doing the weekly shop"
+            fill
+            className="object-cover object-center"
+            sizes="(max-width: 512px) 100vw, 512px"
+            priority
+          />
+        </div>
         <h1 className="text-2xl font-bold text-stone-900 tracking-tight">
           Shopping
         </h1>
-        <p className="text-sm text-stone-400 mt-0.5">
-          Provisions. Needs. Wants. The full catastrophe.
+        <p className="text-sm text-stone-400 mt-0.5 leading-relaxed">
+          &ldquo;I always go for the first pressing. I mean, why wait until everyone else has had their fun with the olives?&rdquo;
         </p>
       </header>
 
@@ -75,16 +85,7 @@ export default function ShoppingPage() {
         ) : (
           <div className="flex flex-col gap-2 mt-2">
             {lists?.map((list) => (
-              <Link
-                key={list.id}
-                href={`/shopping/${list.id}`}
-                className="flex items-center justify-between bg-white rounded-2xl px-4 py-4 shadow-sm border border-stone-100 active:bg-stone-50 transition-colors"
-              >
-                <span className="font-medium text-stone-800">{list.name}</span>
-                <svg className="w-4 h-4 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+              <ListCard key={list.id} list={list} />
             ))}
           </div>
         )}
