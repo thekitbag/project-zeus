@@ -1,18 +1,26 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
+import fs from "fs";
 import path from "path";
 import * as schema from "./schema";
 
-const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), "data", "zeus.db");
+type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
 
-const sqlite = new Database(DB_PATH);
+let _instance: DrizzleDb | null = null;
 
-sqlite.pragma("journal_mode = WAL");
-sqlite.pragma("foreign_keys = ON");
+export function getDb(): DrizzleDb {
+  if (_instance) return _instance;
 
-export const db = drizzle(sqlite, { schema });
+  const dbPath =
+    process.env.DATABASE_PATH ||
+    path.join(process.cwd(), "data", "project-zeus.db");
 
-export function initDb() {
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+
+  const sqlite = new Database(dbPath);
+  sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("foreign_keys = ON");
+
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS shopping_lists (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,11 +37,18 @@ export function initDb() {
     );
   `);
 
-  const existing = sqlite.prepare("SELECT COUNT(*) as count FROM shopping_lists").get() as { count: number };
+  const existing = sqlite
+    .prepare("SELECT COUNT(*) as count FROM shopping_lists")
+    .get() as { count: number };
   if (existing.count === 0) {
-    const insert = sqlite.prepare("INSERT INTO shopping_lists (name, created_at) VALUES (?, datetime('now'))");
+    const insert = sqlite.prepare(
+      "INSERT INTO shopping_lists (name, created_at) VALUES (?, datetime('now'))"
+    );
     insert.run("Groceries");
     insert.run("Costco");
     insert.run("Household");
   }
+
+  _instance = drizzle(sqlite, { schema });
+  return _instance;
 }

@@ -17,6 +17,9 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Create /data so DATABASE_PATH is resolvable if anything touches the DB path during build
+RUN mkdir -p /data
+
 RUN npm run build
 
 # Production stage
@@ -43,6 +46,6 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-ENV DB_PATH=/data/zeus.db
+ENV DATABASE_PATH=/data/project-zeus.db
 
 CMD ["node", "server.js"]

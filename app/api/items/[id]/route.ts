@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import { db, initDb } from "@/db";
+import { getDb } from "@/db";
 import { shoppingItems } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: Request, { params }: Params) {
-  initDb();
   const { id } = await params;
   const itemId = parseInt(id, 10);
   if (isNaN(itemId)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
+  const db = getDb();
   const body = await req.json();
   const [item] = await db
     .update(shoppingItems)
@@ -23,11 +23,11 @@ export async function PATCH(req: Request, { params }: Params) {
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
-  initDb();
   const { id } = await params;
   const itemId = parseInt(id, 10);
   if (isNaN(itemId)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
+  const db = getDb();
   await db.delete(shoppingItems).where(eq(shoppingItems.id, itemId));
   return NextResponse.json({ ok: true });
 }

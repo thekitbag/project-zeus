@@ -7,7 +7,7 @@ services:
       - zeus-data:/data
     restart: unless-stopped
     environment:
-      - DB_PATH=/data/zeus.db
+      - DATABASE_PATH=/data/project-zeus.db
 
 volumes:
   zeus-data:
