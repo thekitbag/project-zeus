@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "Project Zeus",
   description: "Household operations. Broadly under control.",
   manifest: "/manifest.json",
+  icons: {
+    apple: "/icon-192.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
