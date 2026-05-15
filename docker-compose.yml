@@ -8,6 +8,10 @@ services:
     restart: unless-stopped
     environment:
       - DATABASE_PATH=/data/project-zeus.db
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - SHANNON_EMAIL=${SHANNON_EMAIL}
+      - CRON_SECRET=${CRON_SECRET}
 
 volumes:
   zeus-data:
