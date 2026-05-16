@@ -108,7 +108,7 @@ export function getDb(): DrizzleDb {
     CREATE TABLE IF NOT EXISTS monzo_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       access_token TEXT NOT NULL,
-      refresh_token TEXT NOT NULL,
+      refresh_token TEXT,
       expires_at TEXT NOT NULL,
       monzo_user_id TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))

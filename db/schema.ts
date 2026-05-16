@@ -109,7 +109,7 @@ export type Debt = typeof debts.$inferSelect;
 export const monzoTokens = sqliteTable("monzo_tokens", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   accessToken: text("access_token").notNull(),
-  refreshToken: text("refresh_token").notNull(),
+  refreshToken: text("refresh_token"),
   expiresAt: text("expires_at").notNull(),
   monzoUserId: text("monzo_user_id").notNull(),
   createdAt: text("created_at").notNull().default(""),
