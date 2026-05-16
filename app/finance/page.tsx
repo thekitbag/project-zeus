@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
@@ -32,19 +32,22 @@ function weatherColour(weather: string): string {
   return "text-green-400";
 }
 
-export default function FinancePage() {
-  const [spendOpen, setSpendOpen] = useState(false);
-  const [debtOpen, setDebtOpen] = useState(false);
+function MonzoCallbackHandler() {
   const searchParams = useSearchParams();
   const qc = useQueryClient();
-
   useEffect(() => {
-    const status = searchParams.get("monzo");
-    if (status) {
+    if (searchParams.get("monzo")) {
       qc.invalidateQueries({ queryKey: ["monzo-connected"] });
       qc.invalidateQueries({ queryKey: ["monzo-accounts"] });
     }
   }, [searchParams, qc]);
+  return null;
+}
+
+export default function FinancePage() {
+  const [spendOpen, setSpendOpen] = useState(false);
+  const [debtOpen, setDebtOpen] = useState(false);
+  const qc = useQueryClient();
 
   const currentMonth = new Date().toISOString().slice(0, 7);
 
@@ -97,6 +100,7 @@ export default function FinancePage() {
 
   return (
     <>
+      <Suspense fallback={null}><MonzoCallbackHandler /></Suspense>
       <header className="px-4 pt-8 pb-4">
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-semibold tracking-widest uppercase text-amber-600">Project Zeus</p>
