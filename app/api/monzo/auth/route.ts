@@ -1,6 +1,4 @@
-import { redirect } from "next/navigation";
-
-export async function GET() {
+export async function GET(req: Request) {
   const clientId = process.env.MONZO_CLIENT_ID;
   const redirectUri = process.env.MONZO_REDIRECT_URI;
 
@@ -15,5 +13,5 @@ export async function GET() {
     state: "zeus",
   });
 
-  redirect(`https://auth.monzo.com/?${params}`);
+  return Response.redirect(`https://auth.monzo.com/?${params}`, 302);
 }

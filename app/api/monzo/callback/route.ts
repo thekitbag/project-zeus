@@ -1,7 +1,12 @@
-import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { monzoTokens, monzoAccounts } from "@/db/schema";
 import { accountDisplayName } from "@/lib/monzo";
+
+function financeRedirect(req: Request, params: Record<string, string>): Response {
+  const url = new URL("/finance", req.url);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  return Response.redirect(url, 302);
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -9,7 +14,7 @@ export async function GET(req: Request) {
   const error = searchParams.get("error");
 
   if (error || !code) {
-    redirect("/finance?monzo=error");
+    return financeRedirect(req, { monzo: "error", msg: error ?? "no_code" });
   }
 
   const clientId = process.env.MONZO_CLIENT_ID!;
@@ -31,8 +36,8 @@ export async function GET(req: Request) {
 
   if (!tokenRes.ok) {
     const body = await tokenRes.json().catch(() => ({})) as { message?: string; error?: string };
-    const msg = encodeURIComponent(body.message ?? body.error ?? `HTTP ${tokenRes.status}`);
-    redirect(`/finance?monzo=error&msg=${msg}`);
+    const msg = body.message ?? body.error ?? `HTTP ${tokenRes.status}`;
+    return financeRedirect(req, { monzo: "error", msg });
   }
 
   const tokenData = await tokenRes.json() as {
@@ -44,7 +49,7 @@ export async function GET(req: Request) {
 
   const db = getDb();
 
-  // Store tokens (one row only — clear previous)
+  // Store tokens (one row only)
   await db.delete(monzoTokens);
   await db.insert(monzoTokens).values({
     accessToken: tokenData.access_token,
@@ -63,9 +68,9 @@ export async function GET(req: Request) {
     const { accounts } = await accountsRes.json() as {
       accounts: { id: string; type: string; closed: boolean }[];
     };
-
-    const active = accounts.filter((a) => !a.closed && (a.type === "uk_retail" || a.type === "uk_retail_joint"));
-
+    const active = accounts.filter(
+      (a) => !a.closed && (a.type === "uk_retail" || a.type === "uk_retail_joint")
+    );
     for (const account of active) {
       await db
         .insert(monzoAccounts)
@@ -80,5 +85,5 @@ export async function GET(req: Request) {
     }
   }
 
-  redirect("/finance?monzo=connected");
+  return financeRedirect(req, { monzo: "connected" });
 }
