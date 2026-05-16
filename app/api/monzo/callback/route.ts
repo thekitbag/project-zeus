@@ -30,7 +30,9 @@ export async function GET(req: Request) {
   });
 
   if (!tokenRes.ok) {
-    redirect("/finance?monzo=error");
+    const body = await tokenRes.json().catch(() => ({})) as { message?: string; error?: string };
+    const msg = encodeURIComponent(body.message ?? body.error ?? `HTTP ${tokenRes.status}`);
+    redirect(`/finance?monzo=error&msg=${msg}`);
   }
 
   const tokenData = await tokenRes.json() as {

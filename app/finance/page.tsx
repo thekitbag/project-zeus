@@ -35,12 +35,24 @@ function weatherColour(weather: string): string {
 function MonzoCallbackHandler() {
   const searchParams = useSearchParams();
   const qc = useQueryClient();
+  const status = searchParams.get("monzo");
+  const msg = searchParams.get("msg");
+
   useEffect(() => {
-    if (searchParams.get("monzo")) {
+    if (status) {
       qc.invalidateQueries({ queryKey: ["monzo-connected"] });
       qc.invalidateQueries({ queryKey: ["monzo-accounts"] });
     }
-  }, [searchParams, qc]);
+  }, [status, qc]);
+
+  if (status === "error") {
+    return (
+      <div className="mx-4 mt-4 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
+        <p className="text-sm font-semibold text-red-700">Monzo connection failed</p>
+        {msg && <p className="text-xs text-red-500 mt-0.5 font-mono">{msg}</p>}
+      </div>
+    );
+  }
   return null;
 }
 
