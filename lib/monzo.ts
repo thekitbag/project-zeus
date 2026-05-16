@@ -46,7 +46,7 @@ async function refreshTokens() {
       grant_type: "refresh_token",
       client_id: process.env.MONZO_CLIENT_ID!,
       client_secret: process.env.MONZO_CLIENT_SECRET!,
-      refresh_token: tokens.refreshToken,
+      refresh_token: tokens.refreshToken ?? "",
     }),
   });
 
