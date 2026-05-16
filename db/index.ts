@@ -76,6 +76,34 @@ export function getDb(): DrizzleDb {
       watched INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS budget_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      emoji TEXT NOT NULL,
+      colour TEXT NOT NULL,
+      monthly_budget INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS spending_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_id INTEGER NOT NULL REFERENCES budget_categories(id) ON DELETE CASCADE,
+      amount_pence INTEGER NOT NULL,
+      notes TEXT,
+      date TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS debts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      balance_pence INTEGER NOT NULL,
+      interest_rate REAL,
+      monthly_payment_pence INTEGER,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   const existing = sqlite
@@ -88,6 +116,20 @@ export function getDb(): DrizzleDb {
     insert.run("Groceries");
     insert.run("Costco");
     insert.run("Household");
+  }
+
+  const budgetCatCount = (sqlite.prepare("SELECT COUNT(*) as count FROM budget_categories").get() as { count: number }).count;
+  if (budgetCatCount === 0) {
+    const insertBudget = sqlite.prepare(
+      "INSERT INTO budget_categories (name, emoji, colour, monthly_budget, created_at) VALUES (?, ?, ?, ?, datetime('now'))"
+    );
+    insertBudget.run("Groceries",     "🛒", "#86efac", 45000);
+    insertBudget.run("Takeaway",      "🍔", "#fda4af", 8000);
+    insertBudget.run("Travel",        "🚌", "#93c5fd", 15000);
+    insertBudget.run("Entertainment", "🎭", "#c4b5fd", 10000);
+    insertBudget.run("Household",     "🏠", "#fcd34d", 20000);
+    insertBudget.run("Bills",         "📄", "#a8a29e", 50000);
+    insertBudget.run("Miscellaneous", "📦", "#d4d4d4", 10000);
   }
 
   const catCount = (sqlite.prepare("SELECT COUNT(*) as count FROM situation_categories").get() as { count: number }).count;
