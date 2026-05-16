@@ -105,3 +105,41 @@ export const debts = sqliteTable("debts", {
 export type BudgetCategory = typeof budgetCategories.$inferSelect;
 export type SpendingEntry = typeof spendingEntries.$inferSelect;
 export type Debt = typeof debts.$inferSelect;
+
+export const monzoTokens = sqliteTable("monzo_tokens", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  monzoUserId: text("monzo_user_id").notNull(),
+  createdAt: text("created_at").notNull().default(""),
+});
+
+export const monzoAccounts = sqliteTable("monzo_accounts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  monzoAccountId: text("monzo_account_id").notNull().unique(),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  balancePence: integer("balance_pence").notNull().default(0),
+  lastSyncedAt: text("last_synced_at"),
+  createdAt: text("created_at").notNull().default(""),
+});
+
+export const monzoTransactions = sqliteTable("monzo_transactions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  monzoTransactionId: text("monzo_transaction_id").notNull().unique(),
+  monzoAccountId: text("monzo_account_id").notNull(),
+  merchantName: text("merchant_name").notNull(),
+  amountPence: integer("amount_pence").notNull(),
+  date: text("date").notNull(),
+  monzoCategory: text("monzo_category").notNull().default("general"),
+  suggestedCategoryId: integer("suggested_category_id").references(() => budgetCategories.id),
+  notes: text("notes"),
+  status: text("status", { enum: ["pending", "approved", "ignored"] }).notNull().default("pending"),
+  spendingEntryId: integer("spending_entry_id").references(() => spendingEntries.id),
+  createdAt: text("created_at").notNull().default(""),
+});
+
+export type MonzoToken = typeof monzoTokens.$inferSelect;
+export type MonzoAccount = typeof monzoAccounts.$inferSelect;
+export type MonzoTransaction = typeof monzoTransactions.$inferSelect;

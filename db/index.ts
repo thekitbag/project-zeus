@@ -104,6 +104,40 @@ export function getDb(): DrizzleDb {
       notes TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS monzo_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      access_token TEXT NOT NULL,
+      refresh_token TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      monzo_user_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS monzo_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      monzo_account_id TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      balance_pence INTEGER NOT NULL DEFAULT 0,
+      last_synced_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS monzo_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      monzo_transaction_id TEXT NOT NULL UNIQUE,
+      monzo_account_id TEXT NOT NULL,
+      merchant_name TEXT NOT NULL,
+      amount_pence INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      monzo_category TEXT NOT NULL DEFAULT 'general',
+      suggested_category_id INTEGER REFERENCES budget_categories(id),
+      notes TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      spending_entry_id INTEGER REFERENCES spending_entries(id),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   const existing = sqlite

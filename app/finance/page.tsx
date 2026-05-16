@@ -1,14 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { BudgetCategoryCard } from "@/components/finance/BudgetCategoryCard";
 import { DebtCard } from "@/components/finance/DebtCard";
 import { AddSpendSheet } from "@/components/finance/AddSpendSheet";
 import { AddDebtSheet } from "@/components/finance/AddDebtSheet";
+import { MonzoConnect } from "@/components/finance/MonzoConnect";
+import { AccountCard } from "@/components/finance/AccountCard";
+import { PendingTransactionCard } from "@/components/finance/PendingTransactionCard";
 import { formatMoney } from "@/lib/money";
-import type { BudgetCategory, SpendingEntry, Debt } from "@/db/schema";
+import type { BudgetCategory, SpendingEntry, Debt, MonzoAccount, MonzoTransaction } from "@/db/schema";
 
 function financialWeather(categories: BudgetCategory[], spendByCat: Map<number, number>): string {
   const totalBudget = categories.reduce((s, c) => s + c.monthlyBudget, 0);
@@ -22,15 +26,25 @@ function financialWeather(categories: BudgetCategory[], spendByCat: Map<number, 
 }
 
 function weatherColour(weather: string): string {
-  if (weather.startsWith("Unexpected")) return "text-red-500";
-  if (weather.startsWith("Discretionary")) return "text-amber-600";
-  if (weather.startsWith("Budget pressure")) return "text-amber-500";
-  return "text-green-600";
+  if (weather.startsWith("Unexpected")) return "text-red-400";
+  if (weather.startsWith("Discretionary")) return "text-amber-500";
+  if (weather.startsWith("Budget pressure")) return "text-amber-400";
+  return "text-green-400";
 }
 
 export default function FinancePage() {
   const [spendOpen, setSpendOpen] = useState(false);
   const [debtOpen, setDebtOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    const status = searchParams.get("monzo");
+    if (status) {
+      qc.invalidateQueries({ queryKey: ["monzo-connected"] });
+      qc.invalidateQueries({ queryKey: ["monzo-accounts"] });
+    }
+  }, [searchParams, qc]);
 
   const currentMonth = new Date().toISOString().slice(0, 7);
 
@@ -47,6 +61,27 @@ export default function FinancePage() {
   const { data: debtList = [] } = useQuery<Debt[]>({
     queryKey: ["debts"],
     queryFn: () => fetch("/api/finance/debts").then((r) => r.json()),
+  });
+
+  const { data: monzoConnected = false } = useQuery<boolean>({
+    queryKey: ["monzo-connected"],
+    queryFn: async () => {
+      const res = await fetch("/api/monzo/accounts");
+      const accounts = await res.json() as MonzoAccount[];
+      return accounts.length > 0;
+    },
+  });
+
+  const { data: monzoAccounts = [] } = useQuery<MonzoAccount[]>({
+    queryKey: ["monzo-accounts"],
+    queryFn: () => fetch("/api/monzo/accounts").then((r) => r.json()),
+    enabled: monzoConnected,
+  });
+
+  const { data: pendingTransactions = [] } = useQuery<MonzoTransaction[]>({
+    queryKey: ["monzo-pending"],
+    queryFn: () => fetch("/api/monzo/transactions/pending").then((r) => r.json()),
+    enabled: monzoConnected,
   });
 
   const spendByCat = new Map<number, number>();
@@ -80,6 +115,40 @@ export default function FinancePage() {
 
       <div className="px-4 pb-6 space-y-6">
 
+        {/* Monzo connection */}
+        <div>
+          <p className="text-[10px] font-semibold tracking-widest uppercase text-stone-400 mb-2">Accounts</p>
+          <div className="space-y-2">
+            {monzoAccounts.map((acc) => (
+              <AccountCard key={acc.id} account={acc} />
+            ))}
+            <MonzoConnect
+              connected={monzoConnected}
+              onSynced={() => {
+                qc.invalidateQueries({ queryKey: ["monzo-accounts"] });
+                qc.invalidateQueries({ queryKey: ["monzo-pending"] });
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Pending transactions */}
+        {pendingTransactions.length > 0 && (
+          <div>
+            <p className="text-[10px] font-semibold tracking-widest uppercase text-stone-400 mb-2">
+              Review Transactions
+              <span className="ml-2 bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                {pendingTransactions.length}
+              </span>
+            </p>
+            <div className="space-y-2">
+              {pendingTransactions.map((tx) => (
+                <PendingTransactionCard key={tx.id} transaction={tx} categories={categories} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Financial Weather */}
         <div className="bg-stone-900 rounded-2xl p-4">
           <p className="text-[10px] font-semibold tracking-widest uppercase text-stone-500 mb-2">Financial Weather</p>
@@ -90,9 +159,7 @@ export default function FinancePage() {
             </p>
           )}
           {totalDebt > 0 && (
-            <p className="text-xs text-stone-500 mt-1">
-              {formatMoney(totalDebt)} total tracked debt
-            </p>
+            <p className="text-xs text-stone-500 mt-1">{formatMoney(totalDebt)} total tracked debt</p>
           )}
         </div>
 
@@ -115,11 +182,7 @@ export default function FinancePage() {
 
           <div className="space-y-2">
             {categories.map((cat) => (
-              <BudgetCategoryCard
-                key={cat.id}
-                category={cat}
-                spentPence={spendByCat.get(cat.id) ?? 0}
-              />
+              <BudgetCategoryCard key={cat.id} category={cat} spentPence={spendByCat.get(cat.id) ?? 0} />
             ))}
           </div>
 
@@ -159,15 +222,8 @@ export default function FinancePage() {
 
       </div>
 
-      <AddSpendSheet
-        open={spendOpen}
-        onClose={() => setSpendOpen(false)}
-        categories={categories}
-      />
-      <AddDebtSheet
-        open={debtOpen}
-        onClose={() => setDebtOpen(false)}
-      />
+      <AddSpendSheet open={spendOpen} onClose={() => setSpendOpen(false)} categories={categories} />
+      <AddDebtSheet open={debtOpen} onClose={() => setDebtOpen(false)} />
     </>
   );
 }
