@@ -18,6 +18,7 @@ export async function GET(req: Request) {
     return financeRedirect({ monzo: "error", msg: error ?? "no_code" });
   }
 
+  const db = getDb();
   const clientId = process.env.MONZO_CLIENT_ID!;
   const clientSecret = process.env.MONZO_CLIENT_SECRET!;
   const redirectUri = process.env.MONZO_REDIRECT_URI!;
@@ -38,6 +39,11 @@ export async function GET(req: Request) {
   if (!tokenRes.ok) {
     const body = await tokenRes.json().catch(() => ({})) as { message?: string; error?: string };
     const msg = body.message ?? body.error ?? `HTTP ${tokenRes.status}`;
+    // Code already consumed (duplicate callback request) — if tokens exist, treat as success
+    if (typeof msg === "string" && msg.toLowerCase().includes("authorization code")) {
+      const existing = await db.select().from(monzoTokens).limit(1);
+      if (existing.length > 0) return financeRedirect({ monzo: "connected" });
+    }
     return financeRedirect({ monzo: "error", msg });
   }
 
@@ -47,8 +53,6 @@ export async function GET(req: Request) {
     expires_in: number;
     user_id: string;
   };
-
-  const db = getDb();
 
   // Store tokens (one row only)
   await db.delete(monzoTokens);
