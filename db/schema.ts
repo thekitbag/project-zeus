@@ -60,3 +60,14 @@ export const situations = sqliteTable("situations", {
 
 export type SituationCategory = typeof situationCategories.$inferSelect;
 export type Situation = typeof situations.$inferSelect;
+
+export const watchItems = sqliteTable("watch_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull(),
+  type: text("type", { enum: ["film", "series", "documentary", "other"] }).notNull().default("film"),
+  notes: text("notes"),
+  watched: integer("watched", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull().default(""),
+});
+
+export type WatchItem = typeof watchItems.$inferSelect;
