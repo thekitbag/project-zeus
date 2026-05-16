@@ -2,8 +2,9 @@ import { getDb } from "@/db";
 import { monzoTokens, monzoAccounts } from "@/db/schema";
 import { accountDisplayName } from "@/lib/monzo";
 
-function financeRedirect(req: Request, params: Record<string, string>): Response {
-  const url = new URL("/finance", req.url);
+function financeRedirect(params: Record<string, string>): Response {
+  const origin = new URL(process.env.MONZO_REDIRECT_URI!).origin;
+  const url = new URL("/finance", origin);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   return Response.redirect(url, 302);
 }
@@ -14,7 +15,7 @@ export async function GET(req: Request) {
   const error = searchParams.get("error");
 
   if (error || !code) {
-    return financeRedirect(req, { monzo: "error", msg: error ?? "no_code" });
+    return financeRedirect({ monzo: "error", msg: error ?? "no_code" });
   }
 
   const clientId = process.env.MONZO_CLIENT_ID!;
@@ -37,7 +38,7 @@ export async function GET(req: Request) {
   if (!tokenRes.ok) {
     const body = await tokenRes.json().catch(() => ({})) as { message?: string; error?: string };
     const msg = body.message ?? body.error ?? `HTTP ${tokenRes.status}`;
-    return financeRedirect(req, { monzo: "error", msg });
+    return financeRedirect({ monzo: "error", msg });
   }
 
   const tokenData = await tokenRes.json() as {
@@ -85,5 +86,5 @@ export async function GET(req: Request) {
     }
   }
 
-  return financeRedirect(req, { monzo: "connected" });
+  return financeRedirect({ monzo: "connected" });
 }
