@@ -23,10 +23,12 @@ interface MonzoBalance {
 
 export async function POST() {
   const db = getDb();
-  const accounts = await db.select().from(monzoAccounts);
+  const accounts = (await db.select().from(monzoAccounts)).filter(
+    (a) => a.type === "uk_retail_joint"
+  );
 
   if (accounts.length === 0) {
-    return NextResponse.json({ error: "No accounts connected" }, { status: 400 });
+    return NextResponse.json({ error: "No joint account connected" }, { status: 400 });
   }
 
   let totalImported = 0;

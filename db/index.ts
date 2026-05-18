@@ -163,7 +163,16 @@ export function getDb(): DrizzleDb {
     insertBudget.run("Entertainment", "🎭", "#c4b5fd", 10000);
     insertBudget.run("Household",     "🏠", "#fcd34d", 20000);
     insertBudget.run("Bills",         "📄", "#a8a29e", 50000);
+    insertBudget.run("Celebrations",  "🎉", "#f9a8d4", 10000);
     insertBudget.run("Miscellaneous", "📦", "#d4d4d4", 10000);
+  }
+
+  // Add any categories missing from existing installs
+  const hasCelebrations = (sqlite.prepare("SELECT COUNT(*) as count FROM budget_categories WHERE name = 'Celebrations'").get() as { count: number }).count;
+  if (!hasCelebrations) {
+    sqlite.prepare(
+      "INSERT INTO budget_categories (name, emoji, colour, monthly_budget, created_at) VALUES (?, ?, ?, ?, datetime('now'))"
+    ).run("Celebrations", "🎉", "#f9a8d4", 10000);
   }
 
   const catCount = (sqlite.prepare("SELECT COUNT(*) as count FROM situation_categories").get() as { count: number }).count;

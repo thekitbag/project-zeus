@@ -14,7 +14,7 @@ export async function GET() {
       try {
         const { accounts } = await monzoFetch<{ accounts: { id: string; type: string; closed: boolean }[] }>("/accounts");
         const active = accounts.filter(
-          (a) => !a.closed && (a.type === "uk_retail" || a.type === "uk_retail_joint")
+          (a) => !a.closed && a.type === "uk_retail_joint"
         );
         for (const account of active) {
           await db

@@ -74,7 +74,7 @@ export async function GET(req: Request) {
       accounts: { id: string; type: string; closed: boolean }[];
     };
     const active = accounts.filter(
-      (a) => !a.closed && (a.type === "uk_retail" || a.type === "uk_retail_joint")
+      (a) => !a.closed && a.type === "uk_retail_joint"
     );
     for (const account of active) {
       await db
