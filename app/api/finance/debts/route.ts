@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { debts } from "@/db/schema";
-import { asc } from "drizzle-orm";
+import { debts, debtSnapshots } from "@/db/schema";
+import { asc, sum } from "drizzle-orm";
+
+async function recordDebtSnapshot() {
+  const db = getDb();
+  const [{ total }] = await db.select({ total: sum(debts.balancePence) }).from(debts);
+  await db.insert(debtSnapshots).values({
+    date: new Date().toISOString().slice(0, 10),
+    totalPence: Number(total ?? 0),
+    createdAt: new Date().toISOString(),
+  });
+}
 
 export async function GET() {
   const db = getDb();
@@ -28,5 +38,6 @@ export async function POST(req: Request) {
     })
     .returning();
 
+  await recordDebtSnapshot();
   return NextResponse.json(row, { status: 201 });
 }

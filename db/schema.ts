@@ -102,9 +102,17 @@ export const debts = sqliteTable("debts", {
   createdAt: text("created_at").notNull().default(""),
 });
 
+export const debtSnapshots = sqliteTable("debt_snapshots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  date: text("date").notNull(),
+  totalPence: integer("total_pence").notNull(),
+  createdAt: text("created_at").notNull().default(""),
+});
+
 export type BudgetCategory = typeof budgetCategories.$inferSelect;
 export type SpendingEntry = typeof spendingEntries.$inferSelect;
 export type Debt = typeof debts.$inferSelect;
+export type DebtSnapshot = typeof debtSnapshots.$inferSelect;
 
 export const monzoTokens = sqliteTable("monzo_tokens", {
   id: integer("id").primaryKey({ autoIncrement: true }),

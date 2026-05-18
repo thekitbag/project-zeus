@@ -174,9 +174,6 @@ export default function FinancePage() {
               {formatMoney(totalSpent)} of {formatMoney(totalBudget)} budgeted for {monthLabel}
             </p>
           )}
-          {totalDebt > 0 && (
-            <p className="text-xs text-stone-500 mt-1">{formatMoney(totalDebt)} total tracked debt</p>
-          )}
         </div>
 
         {/* Budget */}
@@ -232,6 +229,10 @@ export default function FinancePage() {
               {debtList.map((debt) => (
                 <DebtCard key={debt.id} debt={debt} />
               ))}
+              <div className="bg-stone-900 rounded-2xl px-4 py-3 flex items-center justify-between">
+                <p className="text-xs font-semibold text-stone-400">Total</p>
+                <p className="text-base font-bold text-white">{formatMoney(totalDebt)}</p>
+              </div>
             </div>
           )}
         </div>

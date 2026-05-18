@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { debts } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { debts, debtSnapshots } from "@/db/schema";
+import { eq, sum } from "drizzle-orm";
+
+async function recordDebtSnapshot() {
+  const db = getDb();
+  const [{ total }] = await db.select({ total: sum(debts.balancePence) }).from(debts);
+  await db.insert(debtSnapshots).values({
+    date: new Date().toISOString().slice(0, 10),
+    totalPence: Number(total ?? 0),
+    createdAt: new Date().toISOString(),
+  });
+}
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const db = getDb();
@@ -21,6 +31,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .returning();
 
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  await recordDebtSnapshot();
   return NextResponse.json(row);
 }
 
@@ -28,5 +39,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const db = getDb();
   const { id } = await params;
   await db.delete(debts).where(eq(debts.id, Number(id)));
+  await recordDebtSnapshot();
   return new Response(null, { status: 204 });
 }

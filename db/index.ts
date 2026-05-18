@@ -105,6 +105,13 @@ export function getDb(): DrizzleDb {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS debt_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      total_pence INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS monzo_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       access_token TEXT NOT NULL,
