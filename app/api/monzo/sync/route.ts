@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { monzoAccounts, monzoTransactions } from "@/db/schema";
-import { monzoFetch, getSuggestedCategoryId } from "@/lib/monzo";
+import { monzoFetch, getSuggestedCategoryId, MonzoAuthError } from "@/lib/monzo";
 import { eq } from "drizzle-orm";
 
 interface MonzoTransaction {
@@ -33,6 +33,7 @@ export async function POST() {
 
   let totalImported = 0;
 
+  try {
   for (const account of accounts) {
     // Update balance
     try {
@@ -41,8 +42,9 @@ export async function POST() {
         .update(monzoAccounts)
         .set({ balancePence: balanceData.balance })
         .where(eq(monzoAccounts.monzoAccountId, account.monzoAccountId));
-    } catch {
-      // Balance fetch failed — non-fatal, continue with transactions
+    } catch (err) {
+      if (err instanceof MonzoAuthError) throw err;
+      // Other balance errors are non-fatal
     }
 
     // Fetch transactions since last sync (or start of current month)
@@ -60,7 +62,8 @@ export async function POST() {
     try {
       const data = await monzoFetch<{ transactions: MonzoTransaction[] }>(`/transactions?${params}&expand[]=merchant`);
       transactions = data.transactions;
-    } catch {
+    } catch (err) {
+      if (err instanceof MonzoAuthError) throw err;
       continue;
     }
 
@@ -98,6 +101,13 @@ export async function POST() {
       .update(monzoAccounts)
       .set({ lastSyncedAt: new Date().toISOString() })
       .where(eq(monzoAccounts.monzoAccountId, account.monzoAccountId));
+  }
+
+  } catch (err) {
+    if (err instanceof MonzoAuthError) {
+      return NextResponse.json({ error: "auth_required" }, { status: 401 });
+    }
+    throw err;
   }
 
   return NextResponse.json({ imported: totalImported });

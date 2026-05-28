@@ -4,6 +4,13 @@ import type { BudgetCategory } from "@/db/schema";
 
 const MONZO_API = "https://api.monzo.com";
 
+export class MonzoAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MonzoAuthError";
+  }
+}
+
 // Monzo category → Zeus category name
 const MONZO_CATEGORY_MAP: Record<string, string> = {
   groceries: "Groceries",
@@ -34,7 +41,7 @@ export function accountDisplayName(type: string): string {
 async function refreshTokens() {
   const db = getDb();
   const [tokens] = await db.select().from(monzoTokens);
-  if (!tokens) throw new Error("Not connected to Monzo");
+  if (!tokens) throw new MonzoAuthError("Not connected to Monzo");
 
   const expiresAt = new Date(tokens.expiresAt).getTime();
   if (expiresAt - Date.now() > 5 * 60 * 1000) return tokens;
@@ -50,7 +57,7 @@ async function refreshTokens() {
     }),
   });
 
-  if (!res.ok) throw new Error("Monzo token refresh failed");
+  if (!res.ok) throw new MonzoAuthError("Monzo token refresh failed");
   const data = await res.json();
 
   await db.delete(monzoTokens);

@@ -19,11 +19,17 @@ export function MonzoConnect({ connected, onSynced }: Props) {
     setLastResult(null);
     try {
       const res = await fetch("/api/monzo/sync", { method: "POST" });
-      const data = await res.json() as { imported: number };
-      setLastResult(data.imported > 0 ? `${data.imported} new transaction${data.imported === 1 ? "" : "s"} imported.` : "Up to date.");
-      qc.invalidateQueries({ queryKey: ["monzo-accounts"] });
-      qc.invalidateQueries({ queryKey: ["monzo-pending"] });
-      onSynced();
+      const data = await res.json() as { imported?: number; error?: string };
+      if (res.status === 401 && data.error === "auth_required") {
+        setLastResult("Session expired — please reconnect Monzo.");
+      } else if (!res.ok) {
+        setLastResult("Sync failed. Check connection.");
+      } else {
+        setLastResult(data.imported! > 0 ? `${data.imported} new transaction${data.imported === 1 ? "" : "s"} imported.` : "Up to date.");
+        qc.invalidateQueries({ queryKey: ["monzo-accounts"] });
+        qc.invalidateQueries({ queryKey: ["monzo-pending"] });
+        onSynced();
+      }
     } catch {
       setLastResult("Sync failed. Check connection.");
     } finally {
