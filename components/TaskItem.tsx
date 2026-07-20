@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLongPress } from "@/lib/useLongPress";
+import { apiFetch } from "@/lib/apiFetch";
 import type { TaskItem as Item } from "@/db/schema";
 
 interface Props {
@@ -16,7 +17,7 @@ export function TaskItem({ item, listId }: Props) {
 
   const toggleMutation = useMutation({
     mutationFn: async (completed: boolean) => {
-      await fetch(`/api/task-items/${item.id}`, {
+      await apiFetch(`/api/task-items/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completed }),
@@ -36,7 +37,7 @@ export function TaskItem({ item, listId }: Props) {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      await fetch(`/api/task-items/${item.id}`, { method: "DELETE" });
+      await apiFetch(`/api/task-items/${item.id}`, { method: "DELETE" });
     },
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: ["task-items", listId] });

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/apiFetch";
 import type { ShoppingItem } from "@/db/schema";
 
 export function AddItemForm({ listId }: { listId: number }) {
@@ -11,7 +12,7 @@ export function AddItemForm({ listId }: { listId: number }) {
 
   const addMutation = useMutation({
     mutationFn: async (text: string) => {
-      const res = await fetch(`/api/lists/${listId}/items`, {
+      const res = await apiFetch(`/api/lists/${listId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),

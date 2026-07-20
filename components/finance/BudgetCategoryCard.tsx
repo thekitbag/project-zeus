@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLongPress } from "@/lib/useLongPress";
+import { apiFetch } from "@/lib/apiFetch";
 import { formatMoney, parsePence } from "@/lib/money";
 import type { BudgetCategory } from "@/db/schema";
 
@@ -23,7 +24,7 @@ export function BudgetCategoryCard({ category, spentPence }: Props) {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      await fetch(`/api/finance/budget-categories/${category.id}`, { method: "DELETE" });
+      await apiFetch(`/api/finance/budget-categories/${category.id}`, { method: "DELETE" });
     },
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: ["budget-categories"] });
@@ -39,7 +40,7 @@ export function BudgetCategoryCard({ category, spentPence }: Props) {
 
   const updateBudgetMutation = useMutation({
     mutationFn: async (monthlyBudget: number) => {
-      const res = await fetch(`/api/finance/budget-categories/${category.id}`, {
+      const res = await apiFetch(`/api/finance/budget-categories/${category.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ monthlyBudget }),

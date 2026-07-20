@@ -22,7 +22,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The database is created automatically at `./data/zeus.db` on first run and seeded with three default lists (Groceries, Costco, Household).
+Open [http://localhost:3000](http://localhost:3000). The database is created automatically at `./data/project-zeus.db` on first run and seeded with three default lists (Groceries, Costco, Household).
 
 ---
 
@@ -58,12 +58,19 @@ sudo systemctl restart avahi-daemon
 
 SQLite data lives in a named Docker volume (`zeus-data`). It survives container restarts and rebuilds.
 
-To back up the database:
+To back up the database, use SQLite's online backup — **never** `cp` the `.db`
+file on its own. In WAL mode recent writes live in the `-wal` sidecar file, so a
+bare copy of `project-zeus.db` captures a stale, possibly near-empty database.
+`VACUUM INTO` produces one consistent, fully-checkpointed file:
 
 ```bash
-docker run --rm -v zeus-data:/data -v $(pwd):/backup alpine \
-  cp /data/zeus.db /backup/zeus-backup.db
+docker exec project-zeus-zeus-1 \
+  node -e "require('better-sqlite3')('/data/project-zeus.db').exec(\"VACUUM INTO '/data/backup.db'\")" \
+&& docker cp project-zeus-zeus-1:/data/backup.db ./zeus-backup-$(date +%F).db \
+&& docker exec project-zeus-zeus-1 rm /data/backup.db
 ```
+
+Replace `project-zeus-zeus-1` with your container name from `docker ps` if it differs.
 
 ---
 
@@ -71,7 +78,7 @@ docker run --rm -v zeus-data:/data -v $(pwd):/backup alpine \
 
 | Variable | Default | Description |
 |---|---|---|
-| `DB_PATH` | `./data/zeus.db` | Path to the SQLite database file |
+| `DATABASE_PATH` | `./data/project-zeus.db` | Path to the SQLite database file (set to `/data/project-zeus.db` in Docker) |
 
 ---
 

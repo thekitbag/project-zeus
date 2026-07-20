@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLongPress } from "@/lib/useLongPress";
+import { apiFetch } from "@/lib/apiFetch";
 import type { ShoppingList } from "@/db/schema";
 
 export function ListCard({ list }: { list: ShoppingList }) {
@@ -14,7 +15,7 @@ export function ListCard({ list }: { list: ShoppingList }) {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      await fetch(`/api/lists/${list.id}`, { method: "DELETE" });
+      await apiFetch(`/api/lists/${list.id}`, { method: "DELETE" });
     },
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: ["lists"] });

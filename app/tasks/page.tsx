@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
+import { apiFetch } from "@/lib/apiFetch";
 import type { TaskList } from "@/db/schema";
 import { TaskListCard } from "@/components/TaskListCard";
 
@@ -18,7 +19,7 @@ export default function TasksPage() {
 
   const createList = useMutation({
     mutationFn: async (name: string) => {
-      const res = await fetch("/api/task-lists", {
+      const res = await apiFetch("/api/task-lists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),

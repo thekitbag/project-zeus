@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLongPress } from "@/lib/useLongPress";
+import { apiFetch } from "@/lib/apiFetch";
 import type { TaskList } from "@/db/schema";
 
 export function TaskListCard({ list }: { list: TaskList }) {
@@ -14,7 +15,7 @@ export function TaskListCard({ list }: { list: TaskList }) {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      await fetch(`/api/task-lists/${list.id}`, { method: "DELETE" });
+      await apiFetch(`/api/task-lists/${list.id}`, { method: "DELETE" });
     },
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: ["task-lists"] });

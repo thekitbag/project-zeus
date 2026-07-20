@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLongPress } from "@/lib/useLongPress";
+import { apiFetch } from "@/lib/apiFetch";
 import type { ShoppingItem as Item } from "@/db/schema";
 
 interface Props {
@@ -16,7 +17,7 @@ export function ShoppingItem({ item, listId }: Props) {
 
   const toggleMutation = useMutation({
     mutationFn: async (completed: boolean) => {
-      await fetch(`/api/items/${item.id}`, {
+      await apiFetch(`/api/items/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completed }),
@@ -40,7 +41,7 @@ export function ShoppingItem({ item, listId }: Props) {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      await fetch(`/api/items/${item.id}`, { method: "DELETE" });
+      await apiFetch(`/api/items/${item.id}`, { method: "DELETE" });
     },
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: ["items", listId] });

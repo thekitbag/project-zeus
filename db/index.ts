@@ -5,8 +5,23 @@ import path from "path";
 import * as schema from "./schema";
 
 type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
+type RawDb = InstanceType<typeof Database>;
 
 let _instance: DrizzleDb | null = null;
+let _sqlite: RawDb | null = null;
+let _shutdownRegistered = false;
+
+// Fold the WAL back into the main .db file and reset it. Safe to call while
+// the app is running — a checkpoint only copies already-committed pages and is
+// concurrency-safe. Kept defensive so a shutdown signal can never throw.
+function flushWal(sqlite: RawDb) {
+  try {
+    sqlite.pragma("wal_checkpoint(TRUNCATE)");
+  } catch {
+    // best-effort: if a reader briefly blocks the truncate, the next boot
+    // checkpoint (or autocheckpoint) will catch up.
+  }
+}
 
 export function getDb(): DrizzleDb {
   if (_instance) return _instance;
@@ -18,8 +33,35 @@ export function getDb(): DrizzleDb {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
   const sqlite = new Database(dbPath);
+  _sqlite = sqlite;
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
+  // Wait up to 5s for a lock instead of throwing SQLITE_BUSY immediately.
+  sqlite.pragma("busy_timeout = 5000");
+  // NORMAL is durable under WAL and avoids an fsync on every commit.
+  sqlite.pragma("synchronous = NORMAL");
+  // Fold the WAL into the main file roughly every ~100 pages (~400KB) so the
+  // committed data never accumulates in an unbounded, unflushed -wal file.
+  sqlite.pragma("wal_autocheckpoint = 100");
+  // Flush anything left in the WAL from a previous (possibly SIGKILL'd) run so
+  // every container start acts as a checkpoint safety net.
+  flushWal(sqlite);
+
+  // Next installs its own SIGTERM/SIGINT handlers to drain in-flight requests,
+  // so we must NOT call process.exit() here — just flush the WAL on the way out
+  // and let Next own the exit. Checkpointing (rather than closing) avoids
+  // yanking the connection out from under an in-flight query.
+  if (!_shutdownRegistered) {
+    _shutdownRegistered = true;
+    let flushed = false;
+    const onSignal = () => {
+      if (flushed) return;
+      flushed = true;
+      if (_sqlite) flushWal(_sqlite);
+    };
+    process.once("SIGTERM", onSignal);
+    process.once("SIGINT", onSignal);
+  }
 
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS shopping_lists (

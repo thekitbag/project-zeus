@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLongPress } from "@/lib/useLongPress";
+import { apiFetch } from "@/lib/apiFetch";
 import { formatMoney, parsePence } from "@/lib/money";
 import type { Debt } from "@/db/schema";
 
@@ -14,7 +15,7 @@ export function DebtCard({ debt }: { debt: Debt }) {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      await fetch(`/api/finance/debts/${debt.id}`, { method: "DELETE" });
+      await apiFetch(`/api/finance/debts/${debt.id}`, { method: "DELETE" });
     },
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: ["debts"] });
@@ -28,7 +29,7 @@ export function DebtCard({ debt }: { debt: Debt }) {
 
   const updateMutation = useMutation({
     mutationFn: async (balancePence: number) => {
-      const res = await fetch(`/api/finance/debts/${debt.id}`, {
+      const res = await apiFetch(`/api/finance/debts/${debt.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ balancePence }),

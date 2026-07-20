@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLongPress } from "@/lib/useLongPress";
+import { apiFetch } from "@/lib/apiFetch";
 import { relativeDateLine, getCategoryById } from "@/lib/dates";
 import type { Situation, SituationCategory } from "@/db/schema";
 
@@ -19,7 +20,7 @@ export function SituationCard({ situation, categories, todayStr }: Props) {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      await fetch(`/api/situations/${situation.id}`, { method: "DELETE" });
+      await apiFetch(`/api/situations/${situation.id}`, { method: "DELETE" });
     },
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: ["situations"] });
