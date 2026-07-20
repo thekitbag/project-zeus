@@ -3,6 +3,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { BottomNav } from "@/components/BottomNav";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { Toaster } from "@/components/Toaster";
 
 export const metadata: Metadata = {
   title: "Project Zeus",
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="max-w-lg mx-auto min-h-screen flex flex-col">
             <main className="flex-1 pb-20">{children}</main>
             <InstallPrompt />
+            <Toaster />
             <BottomNav />
           </div>
         </Providers>

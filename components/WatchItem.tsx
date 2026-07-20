@@ -25,6 +25,8 @@ export function WatchItem({ item }: { item: WatchItemType }) {
   const suppressClick = useRef(false);
 
   const toggleMutation = useMutation({
+    // Idempotent state flip, so retrying a transient network blip is safe.
+    retry: 2,
     mutationFn: async () => {
       const res = await fetch(`/api/watch-items/${item.id}`, {
         method: "PATCH",

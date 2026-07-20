@@ -16,6 +16,9 @@ export function ShoppingItem({ item, listId }: Props) {
   const [confirming, setConfirming] = useState(false);
 
   const toggleMutation = useMutation({
+    // Idempotent (sets completed to a fixed value), so retrying a transient
+    // network blip is safe and self-heals the common "ticking as I leave" case.
+    retry: 2,
     mutationFn: async (completed: boolean) => {
       await apiFetch(`/api/items/${item.id}`, {
         method: "PATCH",
