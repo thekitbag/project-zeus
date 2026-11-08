@@ -1,5 +1,8 @@
+import { recordShoppingEmailSent } from "@/lib/shopping-email-scheduler";
 import { sendShoppingEmail } from "@/lib/mailer";
 
+// Manual trigger. The in-app scheduler (instrumentation.ts) is what normally
+// sends; logging here stops it from sending a second email the same day.
 export async function POST(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
@@ -12,5 +15,6 @@ export async function POST(req: Request) {
   }
 
   const result = await sendShoppingEmail();
+  if (result.sent) await recordShoppingEmailSent();
   return Response.json(result);
 }

@@ -154,6 +154,13 @@ export function getDb(): DrizzleDb {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS email_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kind TEXT NOT NULL,
+      sent_on TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS monzo_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       access_token TEXT NOT NULL,

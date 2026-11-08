@@ -151,3 +151,11 @@ export const monzoTransactions = sqliteTable("monzo_transactions", {
 export type MonzoToken = typeof monzoTokens.$inferSelect;
 export type MonzoAccount = typeof monzoAccounts.$inferSelect;
 export type MonzoTransaction = typeof monzoTransactions.$inferSelect;
+
+// One row per scheduled email actually sent, so a restart doesn't resend.
+export const emailLog = sqliteTable("email_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  kind: text("kind").notNull(),
+  sentOn: text("sent_on").notNull(),
+  createdAt: text("created_at").notNull().default(""),
+});

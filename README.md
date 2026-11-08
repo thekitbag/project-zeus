@@ -32,7 +32,7 @@ Open [http://localhost:3000](http://localhost:3000). The database is created aut
 
 - Raspberry Pi 4 (any RAM)
 - Docker + Docker Compose installed on the Pi
-- Pi accessible on local network
+- Tailscale on the Pi and on each phone
 
 ### Deploy
 
@@ -44,15 +44,47 @@ docker compose up -d --build
 
 The app will be available at `http://<pi-ip>:3000`.
 
-### mDNS / friendly URL
+### Remote access (Tailscale + HTTPS)
 
-To reach it at `http://project-zeus.local`, configure mDNS on the Pi:
+Phones reach the app over Tailscale at `https://<pi-name>.<tailnet>.ts.net`. Install the PWA from **this** URL — Chrome won't install a PWA from plain `http://`.
+
+One-time setup:
+
+1. In the Tailscale admin console → **DNS**, enable **MagicDNS** and **HTTPS Certificates**.
+2. On the Pi:
+   ```bash
+   sudo tailscale serve --bg 3000   # HTTPS on :443 → app on :3000, persists across reboots
+   sudo tailscale set --accept-dns=false
+   ```
+
+`http://<pi-ip>:3000` still works in a browser, but not as an installed app. `.local` mDNS names don't resolve over Tailscale.
+
+### Troubleshooting
+
+Run the doctor on the Pi. It checks each layer in order; the first FAIL is usually the cause:
 
 ```bash
-sudo apt install avahi-daemon
-sudo hostnamectl set-hostname project-zeus
-sudo systemctl restart avahi-daemon
+./scripts/pi-doctor.sh
 ```
+
+**PWA shows "invalid response"** — almost always the TLS cert. Let's Encrypt certs last 90 days and Tailscale renews them in the background, which needs working DNS on the Pi. If DNS breaks, renewal fails silently and the app dies when the cert expires. Fix DNS, then force a renewal:
+
+```bash
+nmcli -t -f NAME,DEVICE con show --active          # find the wlan0/eth0 connection
+sudo nmcli con mod "<connection>" ipv4.dns "1.1.1.1 8.8.8.8" ipv4.ignore-auto-dns yes
+sudo nmcli con up "<connection>"                    # drops SSH briefly; reconnect via Tailscale IP
+sudo tailscale cert <pi-name>.<tailnet>.ts.net
+```
+
+Also check you're not on `https://...:3000` — that sends TLS straight to the plain-HTTP app and gives the same error.
+
+### Groceries email
+
+The app emails the uncompleted items on the **Groceries** list to `SHANNON_EMAIL` itself; no host cron is needed. It checks every 15 minutes and sends once on each scheduled day, from the scheduled hour onwards (London time), so a send missed while the Pi was off still goes out later that day. An empty list is skipped. It only runs in production builds.
+
+Needs `GMAIL_USER`, `GMAIL_APP_PASSWORD` (a Gmail app password) and `SHANNON_EMAIL` in `.env` / `.env.local` on the Pi. Optional: `SHOPPING_EMAIL_DAYS` (default `Mon,Thu`) and `SHOPPING_EMAIL_HOUR` (default `18`, i.e. 6pm). Check it with `docker compose logs zeus | grep shopping-email`.
+
+To send one now: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/send-shopping-email`. That counts as the day's send.
 
 ### Data persistence
 

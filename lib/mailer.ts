@@ -1,27 +1,29 @@
 import nodemailer from "nodemailer";
 import { getDb } from "@/db";
 import { shoppingLists, shoppingItems } from "@/db/schema";
-import { eq, asc, and } from "drizzle-orm";
+import { eq, asc, and, sql } from "drizzle-orm";
 
-type ListWithItems = { name: string; items: string[] };
+const LIST_NAME = "Groceries";
 
-function buildHtml(lists: ListWithItems[], dateStr: string): string {
-  const listSections = lists
-    .map(
-      (list) => `
-    <h2 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#a8a29e;margin:28px 0 8px 0;">${list.name}</h2>
-    <ul style="margin:0;padding-left:20px;color:#292524;">
-      ${list.items.map((text) => `<li style="padding:3px 0;font-size:15px;">${text}</li>`).join("")}
-    </ul>`
-    )
-    .join("");
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
+function buildHtml(items: string[], dateStr: string): string {
   return `<!DOCTYPE html>
 <html>
 <body style="font-family:Georgia,'Times New Roman',serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#292524;background:#ffffff;">
   <p style="font-size:15px;color:#78716c;margin:0 0 4px 0;">Shopping reminder</p>
   <p style="font-size:22px;font-weight:bold;margin:0 0 24px 0;">${dateStr}</p>
-  ${listSections}
+  <h2 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#a8a29e;margin:28px 0 8px 0;">${LIST_NAME}</h2>
+  <ul style="margin:0;padding-left:20px;color:#292524;">
+    ${items.map((text) => `<li style="padding:3px 0;font-size:15px;">${escapeHtml(text)}</li>`).join("")}
+  </ul>
   <hr style="border:none;border-top:1px solid #e7e5e4;margin:36px 0 20px;" />
   <p style="font-size:11px;color:#a8a29e;margin:0;">Project Zeus &middot; Household operations. Broadly under control.</p>
 </body>
@@ -38,23 +40,24 @@ export async function sendShoppingEmail(): Promise<{ sent: boolean; reason?: str
   }
 
   const db = getDb();
-  const lists = await db.select().from(shoppingLists).orderBy(asc(shoppingLists.id));
+  const [list] = await db
+    .select()
+    .from(shoppingLists)
+    .where(sql`lower(${shoppingLists.name}) = ${LIST_NAME.toLowerCase()}`)
+    .limit(1);
+  if (!list) {
+    return { sent: false, reason: `no "${LIST_NAME}" list` };
+  }
 
-  const listsWithItems: ListWithItems[] = (
-    await Promise.all(
-      lists.map(async (list) => {
-        const rows = await db
-          .select({ text: shoppingItems.text })
-          .from(shoppingItems)
-          .where(and(eq(shoppingItems.listId, list.id), eq(shoppingItems.completed, false)))
-          .orderBy(asc(shoppingItems.createdAt));
-        return { name: list.name, items: rows.map((r) => r.text) };
-      })
-    )
-  ).filter((l) => l.items.length > 0);
+  const rows = await db
+    .select({ text: shoppingItems.text })
+    .from(shoppingItems)
+    .where(and(eq(shoppingItems.listId, list.id), eq(shoppingItems.completed, false)))
+    .orderBy(asc(shoppingItems.createdAt));
+  const items = rows.map((r) => r.text);
 
-  if (listsWithItems.length === 0) {
-    return { sent: false, reason: "all lists empty" };
+  if (items.length === 0) {
+    return { sent: false, reason: "groceries list empty" };
   }
 
   const dateStr = new Date().toLocaleDateString("en-GB", {
@@ -75,8 +78,9 @@ export async function sendShoppingEmail(): Promise<{ sent: boolean; reason?: str
   await transporter.sendMail({
     from: `"Project Zeus" <${gmailUser}>`,
     to: recipient,
-    subject: `Shopping — ${dateStr}`,
-    html: buildHtml(listsWithItems, dateStr),
+    subject: `Groceries — ${dateStr}`,
+    html: buildHtml(items, dateStr),
+    text: `${LIST_NAME}, ${dateStr}\n\n${items.map((t) => `- ${t}`).join("\n")}\n`,
   });
 
   return { sent: true };
