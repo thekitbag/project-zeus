@@ -1,0 +1,10 @@
+# Keep the build context to source only. Without this, COPY . . drags in the
+# host's node_modules/.next (overwriting the clean npm ci install), the
+# SQLite data, and the .env secrets.
+node_modules
+.next
+.git
+data
+.env*
+*.tsbuildinfo
+next-env.d.ts
