@@ -2,7 +2,7 @@
   "name": "Project Zeus",
   "short_name": "Zeus",
   "description": "Household operations. Broadly under control.",
-  "start_url": "/shopping",
+  "start_url": "/voice",
   "display": "standalone",
   "background_color": "#fafaf8",
   "theme_color": "#fafaf8",
