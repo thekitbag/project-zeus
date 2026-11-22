@@ -86,6 +86,12 @@ Needs `GMAIL_USER`, `GMAIL_APP_PASSWORD` (a Gmail app password) and `SHANNON_EMA
 
 To send one now: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/send-shopping-email`. That counts as the day's send.
 
+### Voice Quick Add
+
+`/voice` turns a spoken or typed instruction into shopping items, tasks and watch list entries. It needs `ANTHROPIC_API_KEY` in `.env` / `.env.local` on the Pi, and the Pi needs outbound internet. Transcripts go to Anthropic for interpretation, and browser speech recognition may send audio to Google or Apple. Zeus doesn't store audio or transcripts.
+
+On Android, long-press the Zeus icon and drag **Quick Add** to the home screen. If it isn't there, reinstall the PWA. On iPhone, open **Voice** in the bottom nav.
+
 ### Data persistence
 
 SQLite data lives in a named Docker volume (`zeus-data`). It survives container restarts and rebuilds.

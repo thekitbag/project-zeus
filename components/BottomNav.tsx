@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/watch", label: "Watch", icon: "📺", active: true },
   { href: "/key-dates", label: "Key Dates", icon: "📅", active: true },
   { href: "/finance", label: "Finance", icon: "💳", active: true },
+  { href: "/voice", label: "Voice", icon: "🎙️", active: true },
 ];
 
 export function BottomNav() {

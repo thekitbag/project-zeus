@@ -161,6 +161,13 @@ export function getDb(): DrizzleDb {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS voice_requests (
+      id TEXT PRIMARY KEY,
+      result TEXT NOT NULL,
+      undone_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS monzo_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       access_token TEXT NOT NULL,

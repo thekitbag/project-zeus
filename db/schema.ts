@@ -152,6 +152,16 @@ export type MonzoToken = typeof monzoTokens.$inferSelect;
 export type MonzoAccount = typeof monzoAccounts.$inferSelect;
 export type MonzoTransaction = typeof monzoTransactions.$inferSelect;
 
+// One row per saved voice command, keyed by a client-generated ID, so a retry
+// returns the original result instead of adding the items twice. The result
+// also records what to remove on undo. The transcript itself is not stored.
+export const voiceRequests = sqliteTable("voice_requests", {
+  id: text("id").primaryKey(),
+  result: text("result").notNull(),
+  undoneAt: text("undone_at"),
+  createdAt: text("created_at").notNull().default(""),
+});
+
 // One row per scheduled email actually sent, so a restart doesn't resend.
 export const emailLog = sqliteTable("email_log", {
   id: integer("id").primaryKey({ autoIncrement: true }),
