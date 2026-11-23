@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLongPress } from "@/lib/useLongPress";
+import { EditWatchItemSheet } from "@/components/EditWatchItemSheet";
 import type { WatchItem as WatchItemType } from "@/db/schema";
 
 const TYPE_STYLES: Record<string, string> = {
@@ -22,6 +23,7 @@ const TYPE_LABELS: Record<string, string> = {
 export function WatchItem({ item }: { item: WatchItemType }) {
   const qc = useQueryClient();
   const [confirming, setConfirming] = useState(false);
+  const [editing, setEditing] = useState(false);
   const suppressClick = useRef(false);
 
   const toggleMutation = useMutation({
@@ -92,6 +94,7 @@ export function WatchItem({ item }: { item: WatchItemType }) {
   }
 
   return (
+    <>
     <div
       {...longPress}
       className={`bg-white rounded-2xl p-4 flex items-start gap-3 border border-stone-100 transition-opacity ${item.watched ? "opacity-50" : ""}`}
@@ -109,18 +112,25 @@ export function WatchItem({ item }: { item: WatchItemType }) {
         )}
       </button>
 
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium text-stone-800 leading-snug ${item.watched ? "line-through" : ""}`}>
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        aria-label={`Edit ${item.title}`}
+        className="flex-1 min-w-0 text-left"
+      >
+        <span className={`block text-sm font-medium text-stone-800 leading-snug ${item.watched ? "line-through" : ""}`}>
           {item.title}
-        </p>
+        </span>
         {item.notes && (
-          <p className="text-xs text-stone-400 mt-0.5 leading-relaxed whitespace-pre-line">{item.notes}</p>
+          <span className="block text-xs text-stone-400 mt-0.5 leading-relaxed whitespace-pre-line">{item.notes}</span>
         )}
-      </div>
+      </button>
 
       <span className={`flex-shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full mt-0.5 ${TYPE_STYLES[item.type] ?? TYPE_STYLES.other}`}>
         {TYPE_LABELS[item.type] ?? item.type}
       </span>
     </div>
+    {editing && <EditWatchItemSheet item={item} onClose={() => setEditing(false)} />}
+    </>
   );
 }

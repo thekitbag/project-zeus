@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLongPress } from "@/lib/useLongPress";
 import { apiFetch } from "@/lib/apiFetch";
+import { EditTextSheet } from "@/components/EditTextSheet";
 import type { TaskItem as Item } from "@/db/schema";
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 export function TaskItem({ item, listId }: Props) {
   const qc = useQueryClient();
   const [confirming, setConfirming] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const toggleMutation = useMutation({
     // Idempotent (sets completed to a fixed value), so retrying a transient
@@ -57,6 +59,24 @@ export function TaskItem({ item, listId }: Props) {
     },
   });
 
+  const editMutation = useMutation({
+    mutationFn: async (text: string) => {
+      const res = await apiFetch(`/api/task-items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      return (await res.json()) as Item;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData<Item[]>(["task-items", listId], (old) =>
+        old?.map((i) => (i.id === updated.id ? updated : i))
+      );
+      qc.invalidateQueries({ queryKey: ["task-items", listId] });
+      setEditing(false);
+    },
+  });
+
   const longPress = useLongPress(() => setConfirming(true));
 
   if (confirming) {
@@ -84,6 +104,7 @@ export function TaskItem({ item, listId }: Props) {
   }
 
   return (
+    <>
     <div
       {...longPress}
       className={`flex items-center gap-3 px-4 py-3 border-b border-stone-100 select-none transition-opacity ${
@@ -103,9 +124,24 @@ export function TaskItem({ item, listId }: Props) {
           </svg>
         )}
       </button>
-      <span className={`text-sm flex-1 ${item.completed ? "line-through text-stone-400" : "text-stone-800"}`}>
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        aria-label={`Edit ${item.text}`}
+        className={`text-sm flex-1 min-w-0 text-left ${item.completed ? "line-through text-stone-400" : "text-stone-800"}`}
+      >
         {item.text}
-      </span>
+      </button>
     </div>
+    {editing && (
+      <EditTextSheet
+        heading="Edit Task"
+        initialText={item.text}
+        saving={editMutation.isPending}
+        onClose={() => setEditing(false)}
+        onSave={(text) => editMutation.mutate(text)}
+      />
+    )}
+    </>
   );
 }

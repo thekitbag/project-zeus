@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-const TYPES = [
+export const WATCH_TYPE_OPTIONS = [
   { value: "film", label: "Film" },
   { value: "series", label: "Series" },
   { value: "documentary", label: "Documentary" },
   { value: "other", label: "Other" },
 ] as const;
 
-type WatchType = (typeof TYPES)[number]["value"];
+type WatchType = (typeof WATCH_TYPE_OPTIONS)[number]["value"];
 
 interface Props {
   open: boolean;
@@ -96,7 +96,7 @@ export function AddWatchItemSheet({ open, onClose }: Props) {
               Type
             </label>
             <div className="flex gap-2 flex-wrap">
-              {TYPES.map(({ value, label }) => (
+              {WATCH_TYPE_OPTIONS.map(({ value, label }) => (
                 <button
                   key={value}
                   onClick={() => setType(value)}

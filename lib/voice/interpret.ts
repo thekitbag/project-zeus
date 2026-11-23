@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { isRealDate } from "@/lib/dates";
 import { WATCH_TYPES, type Interpretation, type VoiceOperation } from "./types";
 
 const MAX_OPERATIONS = 20;
@@ -73,13 +74,6 @@ export function buildCalendar(today: string): string[] {
     const weekday = date.toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
     return `${date.toISOString().slice(0, 10)} ${weekday}`;
   });
-}
-
-function isRealDate(value: unknown): value is string {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return date.toISOString().slice(0, 10) === value;
 }
 
 // The model's output is untrusted too: anything outside the allowlist is

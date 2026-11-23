@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLongPress } from "@/lib/useLongPress";
 import { apiFetch } from "@/lib/apiFetch";
 import { relativeDateLine, getCategoryById } from "@/lib/dates";
+import { EditSituationSheet } from "@/components/EditSituationSheet";
 import type { Situation, SituationCategory } from "@/db/schema";
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
 export function SituationCard({ situation, categories, todayStr }: Props) {
   const qc = useQueryClient();
   const [confirming, setConfirming] = useState(false);
+  const [editing, setEditing] = useState(false);
   const category = getCategoryById(categories, situation.categoryId);
 
   const deleteMutation = useMutation({
@@ -64,28 +66,38 @@ export function SituationCard({ situation, categories, todayStr }: Props) {
   }
 
   return (
+    <>
     <div
       {...longPress}
       className="bg-white rounded-xl border border-stone-100 shadow-sm overflow-hidden select-none"
       style={{ borderLeftWidth: 4, borderLeftColor: category?.colour ?? "#e5e7eb" }}
     >
-      <div className="px-4 py-3">
-        <div className="flex items-center gap-2 mb-1">
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        aria-label={`Edit ${situation.title}`}
+        className="block w-full px-4 py-3 text-left"
+      >
+        <span className="flex items-center gap-2 mb-1">
           <span className="text-base leading-none">{category?.emoji ?? "📌"}</span>
           <span className="text-[10px] font-semibold tracking-widest uppercase text-stone-400">
             {category?.name ?? "Situation"}
           </span>
-        </div>
-        <p className="text-sm font-semibold text-stone-800 leading-snug">{situation.title}</p>
-        <p className="text-xs text-stone-400 mt-0.5">
+        </span>
+        <span className="block text-sm font-semibold text-stone-800 leading-snug">{situation.title}</span>
+        <span className="block text-xs text-stone-400 mt-0.5">
           {relativeDateLine(situation.startDate, situation.endDate, todayStr)}
-        </p>
+        </span>
         {situation.notes && (
-          <p className="text-xs text-stone-500 mt-2 leading-relaxed whitespace-pre-line border-t border-stone-50 pt-2">
+          <span className="block text-xs text-stone-500 mt-2 leading-relaxed whitespace-pre-line border-t border-stone-50 pt-2">
             {situation.notes}
-          </p>
+          </span>
         )}
-      </div>
+      </button>
     </div>
+    {editing && (
+      <EditSituationSheet situation={situation} categories={categories} onClose={() => setEditing(false)} />
+    )}
+    </>
   );
 }

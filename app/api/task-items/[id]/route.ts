@@ -11,10 +11,21 @@ export async function PATCH(req: Request, { params }: Params) {
   if (isNaN(itemId)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
   const db = getDb();
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
+  const updates: { completed?: boolean; text?: string } = {};
+  if (typeof body?.completed === "boolean") updates.completed = body.completed;
+  if (body?.text !== undefined) {
+    const text = typeof body.text === "string" ? body.text.trim() : "";
+    if (!text) return NextResponse.json({ error: "Name can't be empty" }, { status: 400 });
+    updates.text = text;
+  }
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  }
+
   const [item] = await db
     .update(taskItems)
-    .set({ completed: body.completed })
+    .set(updates)
     .where(eq(taskItems.id, itemId))
     .returning();
 
