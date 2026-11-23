@@ -3,15 +3,19 @@ import { getDb } from "@/db";
 import {
   shoppingItems,
   shoppingLists,
+  situationCategories,
+  situations,
   taskItems,
   taskLists,
   voiceRequests,
   watchItems,
 } from "@/db/schema";
+import { formatDisplay } from "@/lib/dates";
 import type { Interpretation, SavedEntry, VoiceResult } from "./types";
 
 const DEFAULT_SHOPPING_LIST = "Groceries";
 const FALLBACK_TASK_LIST = "To Do";
+const FALLBACK_DATE_CATEGORY = "Event";
 
 // "Jobs list", "the jobs" and "JOBS" should all land on a list called "Jobs".
 export function normaliseListName(name: string): string {
@@ -41,11 +45,12 @@ export function getVoiceResult(requestId: string): VoiceResult | null {
   return row ? toResult(row) : null;
 }
 
-export function getListNames(): { shopping: string[]; tasks: string[] } {
+export function getListNames(): { shopping: string[]; tasks: string[]; dateCategories: string[] } {
   const db = getDb();
   return {
     shopping: db.select().from(shoppingLists).orderBy(asc(shoppingLists.id)).all().map((l) => l.name),
     tasks: db.select().from(taskLists).orderBy(asc(taskLists.id)).all().map((l) => l.name),
+    dateCategories: db.select().from(situationCategories).orderBy(asc(situationCategories.id)).all().map((c) => c.name),
   };
 }
 
@@ -64,6 +69,7 @@ export function saveVoiceRequest(requestId: string, interpretation: Interpretati
     const now = new Date().toISOString();
     const shopping = tx.select().from(shoppingLists).orderBy(asc(shoppingLists.id)).all();
     const tasks = tx.select().from(taskLists).orderBy(asc(taskLists.id)).all();
+    const categories = tx.select().from(situationCategories).orderBy(asc(situationCategories.id)).all();
     const saved: SavedEntry[] = [];
     const createdTaskListIds: number[] = [];
 
@@ -103,6 +109,28 @@ export function saveVoiceRequest(requestId: string, interpretation: Interpretati
           .returning()
           .get();
         saved.push({ kind: "task", id: item.id, text: item.text, destination: list.name });
+      } else if (op.kind === "date") {
+        const category =
+          (op.categoryName && findByName(categories, op.categoryName)) ||
+          findByName(categories, FALLBACK_DATE_CATEGORY) ||
+          categories[0];
+        if (!category) throw new Error("No key date categories exist");
+        const item = tx
+          .insert(situations)
+          .values({
+            title: op.text,
+            categoryId: category.id,
+            startDate: op.startDate,
+            endDate: op.endDate,
+            createdAt: now,
+          })
+          .returning()
+          .get();
+        // Show the date, so a misheard one is obvious while Undo is on screen.
+        const when = op.endDate
+          ? `${formatDisplay(op.startDate)} – ${formatDisplay(op.endDate)}`
+          : formatDisplay(op.startDate);
+        saved.push({ kind: "date", id: item.id, text: `${item.title} (${when})`, destination: "Key Dates" });
       } else {
         const item = tx
           .insert(watchItems)
@@ -135,6 +163,8 @@ export function undoVoiceRequest(requestId: string): VoiceResult | null {
         tx.delete(shoppingItems).where(eq(shoppingItems.id, entry.id)).run();
       } else if (entry.kind === "task") {
         tx.delete(taskItems).where(eq(taskItems.id, entry.id)).run();
+      } else if (entry.kind === "date") {
+        tx.delete(situations).where(eq(situations.id, entry.id)).run();
       } else {
         tx.delete(watchItems).where(eq(watchItems.id, entry.id)).run();
       }

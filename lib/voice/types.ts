@@ -1,12 +1,19 @@
 export const WATCH_TYPES = ["film", "series", "documentary", "other"] as const;
 export type WatchType = (typeof WATCH_TYPES)[number];
 
-export const MAX_TRANSCRIPT_LENGTH = 500;
+export const MAX_TRANSCRIPT_LENGTH = 1000;
 
 export type VoiceOperation =
   | { kind: "shopping"; text: string; listName: string | null }
   | { kind: "task"; text: string; listName: string | null }
-  | { kind: "watch"; text: string; watchType: WatchType };
+  | { kind: "watch"; text: string; watchType: WatchType }
+  | {
+      kind: "date";
+      text: string;
+      startDate: string;
+      endDate: string | null;
+      categoryName: string | null;
+    };
 
 export interface Interpretation {
   operations: VoiceOperation[];

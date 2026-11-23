@@ -34,8 +34,22 @@ function getRecognition(): RecognitionConstructor | null {
 
 const subscribeNever = () => () => {};
 
+// Browsers end recognition after a pause, so listening restarts until the user
+// taps stop. This only guards against a mic left on after opening the app.
+const SILENCE_LIMIT_MS = 30_000;
+
+interface ListeningSession {
+  recognition: Recognition | null;
+  stopRequested: boolean;
+  silenceTimer: ReturnType<typeof setTimeout> | null;
+}
+
 // Detach handlers first, so a cancelled recording can never be submitted.
-function discardRecognition(recognition: Recognition | null) {
+function discardSession(session: ListeningSession | null) {
+  if (!session) return;
+  if (session.silenceTimer) clearTimeout(session.silenceTimer);
+  const recognition = session.recognition;
+  session.recognition = null;
   if (!recognition) return;
   recognition.onresult = null;
   recognition.onerror = null;
@@ -73,12 +87,12 @@ export default function VoicePage() {
   const [result, setResult] = useState<VoiceResult | null>(null);
   const [undoing, setUndoing] = useState(false);
 
-  const recognitionRef = useRef<Recognition | null>(null);
+  const sessionRef = useRef<ListeningSession | null>(null);
   const requestIdRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const refreshLists = useCallback(() => {
-    for (const key of ["lists", "items", "task-lists", "task-items", "watch-items"]) {
+    for (const key of ["lists", "items", "task-lists", "task-items", "watch-items", "situations"]) {
       qc.invalidateQueries({ queryKey: [key] });
     }
   }, [qc]);
@@ -124,50 +138,90 @@ export default function VoicePage() {
       const Ctor = getRecognition();
       if (!Ctor) return;
 
-      const recognition = new Ctor();
-      recognition.lang = "en-GB";
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognitionRef.current = recognition;
+      discardSession(sessionRef.current);
+      const session: ListeningSession = { recognition: null, stopRequested: false, silenceTimer: null };
+      sessionRef.current = session;
+      let committed = "";
+      let current = "";
 
-      let heard = "";
-      let failed = false;
+      const heard = () => `${committed} ${current}`.replace(/\s+/g, " ").trim();
 
-      recognition.onresult = (event) => {
-        heard = Array.from(event.results as ArrayLike<ArrayLike<{ transcript: string }>>)
-          .map((alternatives) => alternatives[0].transcript)
-          .join("");
-        setText(heard);
-      };
-
-      recognition.onerror = (event) => {
-        failed = true;
-        if (event.error === "aborted") return;
-        // An automatic start can be blocked until the first tap. That's fine.
-        if (automatic && event.error === "not-allowed") {
-          setPhase("idle");
-          return;
-        }
+      // Keep what was said in the box rather than saving it unreviewed.
+      const endWithoutSaving = (note: string | null) => {
+        const words = heard();
+        discardSession(session);
+        sessionRef.current = null;
+        setText(words);
         setPhase("idle");
-        if (event.error === "no-speech") {
-          setMessage("Didn't catch that. Tap to try again.");
-        } else if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-          setMessage("The mic isn't available here. Use the mic on your keyboard instead.");
-          inputRef.current?.focus();
-        } else {
-          setMessage("Speech recognition failed. Try again, or type it below.");
-        }
+        setMessage(words ? (note ?? "Recording stopped. Tap Add to save it.") : note);
       };
 
-      recognition.onend = () => {
-        recognitionRef.current = null;
-        if (failed) return;
-        if (heard.trim()) {
-          void submit(heard);
-        } else {
-          setPhase("idle");
-          setMessage("Didn't catch that. Tap to try again.");
-        }
+      const resetSilenceTimer = () => {
+        if (session.silenceTimer) clearTimeout(session.silenceTimer);
+        session.silenceTimer = setTimeout(() => {
+          endWithoutSaving(heard() ? "Stopped as it went quiet. Tap Add to save it." : null);
+        }, SILENCE_LIMIT_MS);
+      };
+
+      const listen = () => {
+        const recognition = new Ctor();
+        recognition.lang = "en-GB";
+        // Android repeats earlier words in continuous mode, so restart instead.
+        recognition.continuous = !/Android/i.test(navigator.userAgent);
+        recognition.interimResults = true;
+        session.recognition = recognition;
+        current = "";
+        let fatal = false;
+
+        recognition.onresult = (event) => {
+          current = Array.from(event.results as ArrayLike<ArrayLike<{ transcript: string }>>)
+            .map((alternatives) => alternatives[0].transcript)
+            .join("");
+          setText(heard());
+          resetSilenceTimer();
+        };
+
+        recognition.onerror = (event) => {
+          // A pause isn't a failure. onend restarts listening.
+          if (event.error === "no-speech" || event.error === "aborted") return;
+          fatal = true;
+          // An automatic start can be blocked until the first tap. That's fine.
+          if (automatic && !heard() && event.error === "not-allowed") {
+            endWithoutSaving(null);
+          } else if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+            endWithoutSaving("The mic isn't available here. Use the mic on your keyboard instead.");
+            inputRef.current?.focus();
+          } else {
+            endWithoutSaving("Speech recognition failed. Try again, or type it below.");
+          }
+        };
+
+        recognition.onend = () => {
+          if (fatal) return;
+          committed = heard();
+          current = "";
+
+          if (!session.stopRequested) {
+            try {
+              listen();
+            } catch {
+              endWithoutSaving(null);
+            }
+            return;
+          }
+
+          const words = committed;
+          discardSession(session);
+          sessionRef.current = null;
+          if (words) {
+            void submit(words);
+          } else {
+            setPhase("idle");
+            setMessage("Didn't catch that. Tap to try again.");
+          }
+        };
+
+        recognition.start();
       };
 
       requestIdRef.current = null;
@@ -175,19 +229,28 @@ export default function VoicePage() {
       setMessage(null);
       setResult(null);
       setPhase("listening");
+      resetSilenceTimer();
       try {
-        recognition.start();
+        listen();
       } catch {
-        recognitionRef.current = null;
+        discardSession(session);
+        sessionRef.current = null;
         setPhase("idle");
       }
     },
     [submit]
   );
 
+  const stopListening = () => {
+    const session = sessionRef.current;
+    if (!session) return;
+    session.stopRequested = true;
+    session.recognition?.stop();
+  };
+
   const cancel = () => {
-    discardRecognition(recognitionRef.current);
-    recognitionRef.current = null;
+    discardSession(sessionRef.current);
+    sessionRef.current = null;
     setText("");
     setPhase("idle");
   };
@@ -219,8 +282,8 @@ export default function VoicePage() {
     }
     return () => {
       active = false;
-      discardRecognition(recognitionRef.current);
-      recognitionRef.current = null;
+      discardSession(sessionRef.current);
+      sessionRef.current = null;
     };
   }, [startListening]);
 
@@ -231,30 +294,34 @@ export default function VoicePage() {
     <div className="px-4 pt-8 flex flex-col items-center">
       <h1 className="text-2xl font-bold text-stone-900">Quick Add</h1>
       <p className="text-sm text-stone-500 mt-1 text-center">
-        Shopping, jobs or something to watch. Just say it.
+        Shopping, jobs, key dates or something to watch. Just say it.
       </p>
 
       {speechSupported && (
         <button
-          onClick={() => (listening ? recognitionRef.current?.stop() : startListening())}
+          onClick={() => (listening ? stopListening() : startListening())}
           disabled={processing}
           aria-label={listening ? "Stop listening" : "Start listening"}
           className={`mt-8 w-36 h-36 rounded-full flex items-center justify-center text-white shadow-lg transition-all disabled:opacity-50 ${
             listening ? "bg-red-500 animate-pulse scale-105" : "bg-amber-500"
           }`}
         >
-          <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3zm6-3a6 6 0 01-12 0m6 6v3m-3 0h6"
-            />
-          </svg>
+          {listening ? (
+            <span className="w-12 h-12 rounded-lg bg-white" aria-hidden="true" />
+          ) : (
+            <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3zm6-3a6 6 0 01-12 0m6 6v3m-3 0h6"
+              />
+            </svg>
+          )}
         </button>
       )}
 
       <p className="mt-4 h-5 text-sm font-medium text-stone-600" role="status">
-        {listening ? "Listening…" : processing ? "Adding…" : speechSupported && phase === "idle" ? "Tap to speak" : ""}
+        {listening ? "Listening. Tap to finish." : processing ? "Adding…" : speechSupported && phase === "idle" ? "Tap to speak" : ""}
       </p>
       {listening && (
         <button onClick={cancel} className="mt-1 text-sm text-stone-400 underline">
@@ -311,7 +378,7 @@ export default function VoicePage() {
             requestIdRef.current = null;
           }}
           rows={2}
-          placeholder="We need milk and bread, and remind us to book the MOT"
+          placeholder="We need milk and bread, and the dentist is on Friday at 3"
           className="w-full text-base bg-white border border-stone-200 rounded-xl px-4 py-2.5 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 resize-none"
         />
         <button
